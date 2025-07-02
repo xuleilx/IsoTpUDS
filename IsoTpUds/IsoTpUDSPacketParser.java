@@ -25,16 +25,26 @@ public class IsoTpUDSPacketParser implements UDSPacketParser {
     @Override
     public void feedFrame(byte[] frame) {
         int pciType = (frame[0] & 0xF0) >> 4;
+        if(callback == null){
+            return;
+        }
 
         switch (pciType) {
             case 0x0:  // 单帧
+                if(buffer.size() != 0){
+                    callback.onError("Sequence number mismatch, dismiss.");
+                    reset();
+                }
                 int len = frame[0] & 0x0F;
                 byte[] single = Arrays.copyOfRange(frame, 1, 1 + len);
                 callback.onComplete(single);
                 break;
 
             case 0x1:  // 首帧
-                reset();
+                if(buffer.size() != 0){
+                    callback.onError("Sequence number mismatch, dismiss.");
+                    reset();
+                }
                 expectedLength = ((frame[0] & 0x0F) << 8) | (frame[1] & 0xFF);
                 buffer.write(frame, 2, 6);
                 break;
